@@ -1,3 +1,4 @@
+from ImageDecoder import Decoder
 
 decoder = Decoder()
 
