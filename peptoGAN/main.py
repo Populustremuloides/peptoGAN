@@ -214,15 +214,9 @@ def main():
             gen_loss_A_total = (gen_loss_B * 0.1 + fm_loss_B * 0.9) * (1. - rate) + recon_loss_A * rate
             gen_loss_B_total = (gen_loss_A * 0.1 + fm_loss_A * 0.9) * (1. - rate) + recon_loss_B * rate
 
-            # if args.model_arch == 'discogan':  # This is what we want
             gen_loss = gen_loss_A_total + gen_loss_B_total
             dis_loss = dis_loss_A + dis_loss_B
-            # elif args.model_arch == 'recongan':
-            #     gen_loss = gen_loss_A_total
-            #     dis_loss = dis_loss_B
-            # elif args.model_arch == 'gan':
-            #     gen_loss = (gen_loss_B*0.1 + fm_loss_B*0.9)
-            #     dis_loss = dis_loss_B
+
 
             # UPDATE EDGES BASED ON LOSSES *****************************************************
 
