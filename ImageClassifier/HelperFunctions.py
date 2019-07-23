@@ -46,7 +46,6 @@ def get_data():
   test = randomizedData[0:5999]
   testLabels = randomizedLabels[0:5999]
   
-  
   # put in pytorch format
   randomizedData = np.stack(randomizedData)
   randomizedLabels = np.stack(randomizedLabels)
@@ -81,9 +80,6 @@ def shuffle_data(data, labels):
     for index in dataIndex:
         shuffledData.append(as_np(data[index]))
         shuffledLabels.append(as_np(labels[index]))
-
-#     shuffledData = torch.Tensor.cpu(shuffledData)
-#     shuffledLabels = ensor.cpu(shuffledLabels)
         
     shuffledData = np.stack(shuffledData)
     shuffledLabels = np.stack(shuffledLabels)
@@ -107,20 +103,7 @@ def get_dis_loss(output, labels, criterion, cuda):
     return discriminatorLoss
 
 
-
-
-
 def getBatch(data, labels, iterations, batchSize):
-  
-  
-    if len(data) < 30000:
-        print("IN getBatch")
-        print("start:")
-        print(str(iterations * batchSize))
-        print("stop")
-        print(str((iterations + 1) * batchSize))
-
-    
     
     newBatch = data[iterations * batchSize: (iterations + 1) * batchSize]
     newLabels = labels[iterations * batchSize: (iterations + 1) * batchSize]
