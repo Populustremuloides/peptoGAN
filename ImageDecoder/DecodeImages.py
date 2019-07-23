@@ -1,4 +1,4 @@
-from ImageDecoder import Decoder
+from Decoder import *
 
 decoder = Decoder()
 
