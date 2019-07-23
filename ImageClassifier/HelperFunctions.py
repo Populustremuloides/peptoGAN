@@ -138,4 +138,17 @@ def getAccuracy(classifications, labels):
     return (numCorrect / total)
       
       
- 
+ import random
+
+def getStartStop(labels):
+  
+    # This function selects start and stop indices to take a sampel of 100 input images or labels.
+    # When used in conjunction with a large testing set of images/labels, this function facilitates
+    # testing the accuracy of the discriminator without using large amounts of GPU memeory by selecting
+    # a relatively random sample from the testing images and labels.
+    
+    startIndex = random.randint(0,(len(labels) - 100))
+    stopIndex = startIndex + 100
+    
+    return startIndex, stopIndex
+    
