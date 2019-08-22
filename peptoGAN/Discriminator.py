@@ -5,8 +5,8 @@ class Discriminator(nn.Module):
 
     stride = (1,1)
     padding = (1,1)
-    dilation = (2,1)
-    kernel_size = (4,4)
+    dilation = (1,1)
+    kernel_size = (3,3)
     output_padding = (0,0)
 
     def __init__(
@@ -32,23 +32,31 @@ class Discriminator(nn.Module):
 
 
         # Layer 3
-        self.conv3 = nn.Conv2d(in_channels= (25 * 2), out_channels=(25 * 3), kernel_size = self.kernel_size,
+        self.conv3 = nn.Conv2d(in_channels= (25 * 2), out_channels=(25 * 4), kernel_size = self.kernel_size,
                   stride=self.stride, padding=self.padding,dilation=self.dilation, bias=False)
-        self.bn3 = nn.BatchNorm2d(25 * 3)
+        self.bn3 = nn.BatchNorm2d(25 * 4)
         self.relu3 = nn.LeakyReLU(0.2, inplace=True)
 
 
         # Layer 4
-        self.conv4 = nn.Conv2d(in_channels= (25 * 3), out_channels=25 * 4, kernel_size=self.kernel_size,
+        self.conv4 = nn.Conv2d(in_channels = (25 * 4), out_channels = (25*8), kernel_size=self.kernel_size,
                   stride=self.stride, padding=self.padding,dilation=self.dilation, bias=False)
-        self.bn4 = nn.BatchNorm2d(25 * 4)
+        self.bn4 = nn.BatchNorm2d(25 * 8)
         self.relu4 = nn.LeakyReLU(0.2, inplace=True)
 
 
-        # fully connected (linear) layer
-        self.fcl = nn.Linear(in_features = (9*4)*(25*4), out_features=2)
+        # Layer 5
+        self.conv5 = nn.Conv2d(in_channels = (25 * 8), out_channels = (25*16), kernel_size=self.kernel_size,
+                  stride=self.stride, padding=self.padding,dilation=self.dilation, bias=False)
+        self.bn5 = nn.BatchNorm2d(25 * 16)
+        self.relu5 = nn.LeakyReLU(0.2, inplace=True)
+        
+        # fully connected (linear) layers
+        self.fcl1 = nn.Linear(in_features = (25*16)*(25*8), out_features=2)
+#         self.reluF1 = nn.LeakyReLU(25*16)
 
-
+#         self.fcl2 = nn.Linear(in_features = (25*16), out_features=2)
+        
     def forward(self, input, epoch): # run input through the layers (perform a forward pass to get an output)
 
         # run the input layer
@@ -70,14 +78,17 @@ class Discriminator(nn.Module):
         bn4 = self.bn4( conv4 )
         relu4 = self.relu4( bn4 )
 
-        # run output through the final layer
-        reshaped5 = relu4.reshape(relu4.size(0), -1) # flatten
-        linear6 = self.fcl(reshaped5) # run through layer
+        # run output from layer 3 through layer 4
+        conv5 = self.conv5( relu4 )
+        bn5 = self.bn5( conv5 )
+        relu5 = self.relu5( bn5 )     
 
-        if epoch <= 5:
-            # use a signmoid function to classify the output from layer 6
-            return torch.sigmoid( linear6 ), [relu2, relu3, relu4, linear6] # return intermediate layer values, too (Why? To generate the third loss function)
-
-        else: # don't include linear6 in the loss after 5 epochs because it becomes constant
-            # use a signmoid function to classify the output from layer 6
-            return torch.sigmoid( linear6 ), [relu2, relu3, relu4] # return intermediate layer values, too (Why? To generate the third loss function)
+        
+#         # run output through the final layer
+        reshaped5 = relu5.reshape(relu5.size(0), -1) # flatten
+#         linear6 = self.fcl1(reshaped5) # run through layer
+#         relu6 = self.reluF1(linear6)
+    
+        linear6 = self.fcl1(reshaped5)
+        # use a signmoid function to classify the output from layer 6
+        return torch.sigmoid( linear6 ), [relu2, relu3, relu4, relu5] # return intermediate layer values, too (Why? To generate the third BCE loss function)
