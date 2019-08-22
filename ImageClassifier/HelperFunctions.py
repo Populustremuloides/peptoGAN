@@ -26,8 +26,6 @@ def get_data():
   combinedData = np.concatenate((zero, one))
   combinedLabels = np.concatenate((zeroLabels, oneLabels))
   
-
-  
   
   # randomize them according to the same random indices
   indices = list(range(len(combinedData)))
@@ -40,34 +38,41 @@ def get_data():
       randomizedLabels.append(combinedLabels[index])
     
   
-  print(len(randomizedData))
+ # print(len(randomizedData))
   
-  # separate out the test and test labels
+  # separate out the test, feature, and train sets
   test = randomizedData[0:5999]
   testLabels = randomizedLabels[0:5999]
   
+  feature = randomizedData[6000:11999]
+  featureLabels = randomizedLabels[6000:11999]
+  
+  train = randomizedData[12000:]
+  trainLabels = randomizedLabels[12000:]
+  
+  
   # put in pytorch format
-  randomizedData = np.stack(randomizedData)
-  randomizedLabels = np.stack(randomizedLabels)
   
-  randomizedData = Variable(torch.FloatTensor(randomizedData))
-  randomizedLabels = Variable(torch.FloatTensor(randomizedLabels))
+  train = np.stack(train)
+  trainLabels = np.stack(trainLabels)
   
+
   test = np.stack(test)
   testLabels = np.stack(testLabels)
   
-  test = Variable(torch.FloatTensor(test))
-  testLabels = Variable(torch.FloatTensor(testLabels))
+  feature = np.stack(feature)
+  featureLabels = np.stack(featureLabels)  
   
-  
-  return randomizedData, randomizedLabels, test, testLabels
+
+   
+  return train, trainLabels, test, testLabels, feature, featureLabels
   
 def as_np(data):
     return data.cpu().data.numpy()
 
 def shuffle_data(data, labels):
-    print(type(data))
-    print(type(labels))
+    #print(type(data))
+    #print(type(labels))
   
     if data.shape[0] != labels.shape[0]:
         return None
@@ -80,6 +85,9 @@ def shuffle_data(data, labels):
     for index in dataIndex:
         shuffledData.append(as_np(data[index]))
         shuffledLabels.append(as_np(labels[index]))
+
+#     shuffledData = torch.Tensor.cpu(shuffledData)
+#     shuffledLabels = ensor.cpu(shuffledLabels)
         
     shuffledData = np.stack(shuffledData)
     shuffledLabels = np.stack(shuffledLabels)
@@ -92,7 +100,14 @@ def shuffle_data(data, labels):
 
 
 def get_dis_loss(output, labels, criterion, cuda):
-  
+    
+#     print()
+#     print("in get_dis_loss")
+#     print("len output: " + str(output.shape))
+#     print("len labels:" + str(labels.shape))
+    
+#     print(output[0])
+#     print(labels[0])
 
     if cuda:
         output = output.cuda() # not sure we need this, but it can't hurt!
@@ -103,7 +118,20 @@ def get_dis_loss(output, labels, criterion, cuda):
     return discriminatorLoss
 
 
+
+
+
 def getBatch(data, labels, iterations, batchSize):
+  
+  
+#     if len(data) < 30000:
+        #print("IN getBatch")
+        #print("start:")
+        #print(str(iterations * batchSize))
+        #print("stop")
+        #print(str((iterations + 1) * batchSize))
+
+    
     
     newBatch = data[iterations * batchSize: (iterations + 1) * batchSize]
     newLabels = labels[iterations * batchSize: (iterations + 1) * batchSize]
@@ -116,8 +144,8 @@ def getAccuracy(classifications, labels):
     classifications = as_np(classifications)
     labels = as_np(labels)
 
-    print(classifications.shape)
-    print(labels.shape)
+    #print(classifications.shape)
+    #print(labels.shape)
     
     numCorrect = 0
     numIncorrect = 0
@@ -138,17 +166,4 @@ def getAccuracy(classifications, labels):
     return (numCorrect / total)
       
       
- import random
-
-def getStartStop(labels):
   
-    # This function selects start and stop indices to take a sampel of 100 input images or labels.
-    # When used in conjunction with a large testing set of images/labels, this function facilitates
-    # testing the accuracy of the discriminator without using large amounts of GPU memeory by selecting
-    # a relatively random sample from the testing images and labels.
-    
-    startIndex = random.randint(0,(len(labels) - 100))
-    stopIndex = startIndex + 100
-    
-    return startIndex, stopIndex
-    
