@@ -84,10 +84,9 @@ class Discriminator(nn.Module):
         relu5 = self.relu5( bn5 )     
 
         
-#         # run output through the final layer
+        # run output through the final layer
         reshaped5 = relu5.reshape(relu5.size(0), -1) # flatten
-#         linear6 = self.fcl1(reshaped5) # run through layer
-#         relu6 = self.reluF1(linear6)
+
     
         linear6 = self.fcl1(reshaped5)
         # use a signmoid function to classify the output from layer 6
