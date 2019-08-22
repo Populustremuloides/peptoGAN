@@ -1,6 +1,9 @@
 from torch.autograd import Variable
 import torch
 import numpy as np
+from torch.autograd import Variable
+import torch
+import numpy as np
 
 
 # Convert 2-dimensional array into 3-d array
@@ -30,14 +33,14 @@ def addRGB(x):
     return threeDList
 
 def get_data2():
-  one = np.load("simple1.npy")
-  two = np.load("simple2.npy")
+  one = np.load("ncAntiDomain.npy")
+  two = np.load("ncToxicDomain.npy")
   
   dataA = one
   dataB = two
   
-  test_A = Variable(torch.FloatTensor(np.stack(one[0:10])))
-  test_B = Variable(torch.FloatTensor(np.stack(two[0:10])))
+  test_A = Variable(torch.FloatTensor(np.stack(one[0:49])))
+  test_B = Variable(torch.FloatTensor(np.stack(two[0:49])))
   
   return dataA, dataB, test_A, test_B
   
@@ -57,10 +60,10 @@ def get_data(x, y):
         else:
            two.append(Variable( torch.FloatTensor( x[imageIndex] )))
 
-    data_A = Variable(torch.FloatTensor(np.stack(zero[32:])))
-    data_B = Variable(torch.FloatTensor(np.stack(one[32:])))
-    test_A = Variable(torch.FloatTensor(np.stack(zero[0:31])))
-    test_B = Variable(torch.FloatTensor(np.stack(one[0:31])))
+    data_A = Variable(torch.FloatTensor(np.stack(zero[50:])))
+    data_B = Variable(torch.FloatTensor(np.stack(one[50:])))
+    test_A = Variable(torch.FloatTensor(np.stack(zero[0:49])))
+    test_B = Variable(torch.FloatTensor(np.stack(one[0:49])))
     return data_A, data_B, test_A, test_B
 
 
@@ -107,20 +110,16 @@ def get_fm_loss(real_feats, fake_feats, criterion, cuda):
 
 
 def get_gan_loss(dis_real, dis_fake, criterion, cuda):
-    print(dis_real.size())
-    print(dis_real)
-    print(dis_fake.size())
-    print(dis_fake)
     labels_dis_real = Variable(torch.ones( [dis_real.size()[0], dis_real.size()[1]] ))
-    labels_dis_fake = Variable(torch.zeros([dis_fake.size()[0], dis_fake.size()[1]] ))
-    labels_gen = Variable(torch.ones([dis_fake.size()[0], dis_fake.size()[1]]))
+    labels_dis_fake = Variable(torch.zeros([dis_fake.size()[0], dis_real.size()[1]] ))
+    labels_gen = Variable(torch.ones([dis_fake.size()[0], dis_real.size()[1]]))
 
     if cuda:
         labels_dis_real = labels_dis_real.cuda()
         labels_dis_fake = labels_dis_fake.cuda()
         labels_gen = labels_gen.cuda()
 
-    dis_loss = criterion( dis_real, labels_dis_real ) * 0.9 + criterion( dis_fake, labels_dis_fake ) * 0.1
+    dis_loss = criterion( dis_real, labels_dis_real ) * 0.5 + criterion( dis_fake, labels_dis_fake ) * 0.5
     gen_loss = criterion( dis_fake, labels_gen )
 
     return dis_loss, gen_loss
@@ -131,7 +130,7 @@ def as_np(data):
 
 
 def getBatch(data, iterations, batchSize):
-#     print(data.shape)
+
     newBatch = data[iterations * batchSize: (iterations + 1) * batchSize]
-#     print(newBatch.shape)
+
     return newBatch
