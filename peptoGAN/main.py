@@ -1,6 +1,6 @@
-from Discriminator import *
-from Generator import *
-from HelperFunctions import *
+# from Discriminator import *
+# from Generator import *
+# from HelperFunctions import *
 
 import torch
 import torch.nn as nn
@@ -18,30 +18,42 @@ import pickle
 
 
 def main():
-    transferLearning = False
-    fineTuning = False
+    generator_A = None
+    generator_B = None
+  
+    transferLearning = True
     cuda = True
     learning_rate = 0.0002
-    model_save_interval = 900
-    image_save_interval = 900
-    update_interval = 3
-    log_interval = 100
-    gan_curriculum = 10000
-    starting_rate = 0.01
-    default_rate = 0.5
+    model_save_interval = 100
+    image_save_interval = 100
+    update_interval = 85
+    log_interval = 10
+    gan_curriculum = 10000 #  0 
+    starting_rate = 0.10 # 0.50 # 0.10
+    default_rate = 0.50
 
-    epoch_size = 15
-    batch_size = 10
+    epoch_size = 30
+    batch_size = 50
 
-    result_path = "gitter_1_numpy_results"
-    model_path = "gitter_1_models"
-    saved_model_path = "gitter_1_models/16.0"
-    saved_gen_A = "model_gen_A-16.0"
-    saved_gen_B = "model_gen_B-16.0"
-    saved_dis_A = "model_dis_A-16.0"
-    saved_dis_B = "model_dis_B-16.0"
+    result_path = "nc_transfer_results_4"
+    model_path = "nc_transfer_models_4"
+    saved_model_path =  "" # "nc_transfer_models_3/6.0" #"nc_transfer_models/35.0" #"real_peptide3.0_models/35.0" # fill in 
+    saved_gen_A = "model_gen_A-6.0"
+    saved_gen_B = "model_gen_B-6.0"
+    saved_dis_A = "model_dis_A-6.0"
+    saved_dis_B = "model_dis_B-6.0"
 
     # unload the data files
+
+    # x is a 3-dimensional array of 25 x 8 images of peptides
+#     x = pickle.load(open("x_test.pickle", 'rb'))
+    # y is a list of the lables
+#     y = pickle.load(open("y_test.pickle", 'rb'))
+
+
+    # separate the data into toxic and non-toxic domains, using labels in y
+#     data_A, data_B, test_A, test_B = get_data(x, y)
+
     data_A, data_B, test_A, test_B = get_data2()
     
     # Initialize Learning Networks
@@ -50,8 +62,10 @@ def main():
     discriminator_A = Discriminator()
     discriminator_B = Discriminator()
 
-    if transferLearning or fineTuning:
+    if transferLearning:
         device = None
+        gan_curriculum = 0 
+        starting_rate = 0.50
 
         saved_gen_A_path = os.path.join(saved_model_path, saved_gen_A)
         saved_gen_B_path = os.path.join(saved_model_path, saved_gen_B)
@@ -74,14 +88,13 @@ def main():
             dis_B_state_dict = torch.load(saved_dis_B_path)
 
         # obtain the state dictionaries previously trained models
-
-
+        
 
         # load state dictionaries
-        generator_A.load_state_dict(gen_A_state_dict)
-        generator_B.load_state_dict(gen_B_state_dict)
-        discriminator_A.load_state_dict(dis_A_state_dict)
-        discriminator_B.load_state_dict(dis_B_state_dict)
+        generator_A.load_state_dict(gen_A_state_dict, strict = False)
+        generator_B.load_state_dict(gen_B_state_dict, strict = False)
+        discriminator_A.load_state_dict(dis_A_state_dict, strict = False)
+        discriminator_B.load_state_dict(dis_B_state_dict, strict = False)
 
         # send dictionaries to device
         generator_A.to(device)
@@ -90,8 +103,7 @@ def main():
         discriminator_B.to(device)
 
 
-
-
+        
     # Enable GPUs
     if cuda:
         test_A = test_A.cuda()
@@ -114,9 +126,9 @@ def main():
     dis_params = chain(discriminator_A.parameters(), discriminator_B.parameters())
 
     # Setting up gradient descent (optimiser, using the Adam algorithm)
-    optim_gen = optim.Adam(gen_params, lr=learning_rate, betas=(0.5, 0.999),
+    optim_gen = optim.Adam(gen_params, lr=0.0001, betas=(0.5, 0.999),
                            weight_decay=0.00001)  # Default learning_rate is 0.0002
-    optim_dis = optim.Adam(dis_params, lr=learning_rate, betas=(0.5, 0.999), weight_decay=0.00001)
+    optim_dis = optim.Adam(dis_params, lr=0.00001, betas=(0.5, 0.999), weight_decay=0.00001)
 
     iters = 0
 
@@ -130,27 +142,6 @@ def main():
         pbar = ProgressBar(maxval=n_batches, widgets=widgets)
         pbar.start()
 
-        # If the epoch is greater than 5,
-        # stop updating the fully connected
-        # layers on the generators and discriminators
-        if (epoch <= 500) and not (transferLearning) and not (fineTuning):
-            for p in generator_A.fcl.parameters():
-                p.requires_grad = True
-            for p in generator_B.fcl.parameters():
-                p.requires_grad = True
-            for p in discriminator_A.fcl.parameters():
-                p.requires_grad = True
-            for p in discriminator_B.fcl.parameters():
-                p.requires_grad = True
-        else:
-            for p in generator_A.fcl.parameters():
-                p.requires_grad = False
-            for p in generator_B.fcl.parameters():
-                p.requires_grad = False
-            for p in discriminator_A.fcl.parameters():
-                p.requires_grad = False
-            for p in discriminator_B.fcl.parameters():
-                p.requires_grad = False
 
         # for each batch
         for i in range(n_batches - 1):
@@ -158,6 +149,7 @@ def main():
             pbar.update(i)
 
             # Reset gradients
+            generator_A.zero_grad()
             generator_B.zero_grad()
             discriminator_A.zero_grad()
             discriminator_B.zero_grad()
@@ -166,7 +158,7 @@ def main():
             A = getBatch(data_A, i, batch_size)
             B = getBatch(data_B, i, batch_size)
 
-            # This returns a batch of dimension batch_size, in_chanels, height, width (30,3,25,8)
+            # This returns a batch of dimension batch_size, in_chanels, height, width (30,1,25,8)
 
             # Enable GPUs
             if cuda:
@@ -174,15 +166,15 @@ def main():
                 B = B.cuda()
 
             # PERFORM TRANSLATIONS ON BATCHES **********************************************
-
+#             print(A.shape)
             # Convert between domains
             AB = generator_B(A, batch_size)  # generator_B maps from A to B
             BA = generator_A(B, batch_size)
-
+#             print(B.shape)
             # Re-convert to original domain
             ABA = generator_A(AB, batch_size)  # Should be back to original images
             BAB = generator_B(BA, batch_size)
-
+#             break
             # GENERATE LOSS ***************************************************************
 
             # Reconstruction Loss: Determine how well original image was reconstructed
@@ -216,7 +208,6 @@ def main():
 
             gen_loss = gen_loss_A_total + gen_loss_B_total
             dis_loss = dis_loss_A + dis_loss_B
-
 
             # UPDATE EDGES BASED ON LOSSES *****************************************************
 
@@ -296,3 +287,5 @@ def main():
                            os.path.join(model_subdir_path, 'model_dis_B-' + str(iters / model_save_interval)))
 
             iters += 1
+            return generator_A, generator_B
+  
