@@ -22,7 +22,7 @@ dictionary = None
 
 def main():
   
-    transferLearning = True
+    transferLearning = False
     fineTuning = False
     cuda = True
     model_save_interval = 1000
@@ -34,6 +34,7 @@ def main():
     trainingAccuracyList = []
     trainingLossList = []
     testingLossList = []
+    modelNumList = []
 #    
 
     epoch_size = 30
@@ -47,7 +48,24 @@ def main():
 
 
     # unload the data files
-    data, dataLabels, test, testLabels = get_data()
+    train, trainLabels, test, testLabels, feature, featureLabels = get_data()
+    
+    np.save("train", train)
+    np.save("trainLabels", trainLabels)
+    np.save("test", test)
+    np.save("testLabels", testLabels)
+    np.save("feature", feature)
+    np.save("featureLabels", featureLabels)
+    
+    
+    train = Variable(torch.FloatTensor(train))
+    trainLabels = Variable(torch.FloatTensor(trainLabels))
+  
+    test = Variable(torch.FloatTensor(test))
+    testLabels = Variable(torch.FloatTensor(testLabels))
+  
+    feature = Variable(torch.FloatTensor(feature))
+    featureLabels = Variable(torch.FloatTensor(featureLabels))
     
     
     # Initialize Learning Network
@@ -81,11 +99,12 @@ def main():
         
     # Enable GPUs
     if cuda:
-        data = data.cuda()
+        train = train.cuda()
         test = test.cuda()
+        feature = feature.cuda()
         discriminator = discriminator.cuda()
 
-    data_size = len(data)
+    data_size = len(train)
     n_batches = (data_size // batch_size)
 
     # Set up loss function
@@ -102,7 +121,8 @@ def main():
     for epoch in range(epoch_size):
         # Shuffle the order of all the data
 
-        data, dataLabels = shuffle_data(data, dataLabels)
+        train, trainLabels = shuffle_data(train, trainLabels)
+
 
         # Progression bar
         widgets = ['epoch #%d|' % epoch, Percentage(), Bar(), ETA()]
@@ -119,17 +139,14 @@ def main():
             discriminator.zero_grad()
 
             # Get the batches
-            batch, batchLabels = getBatch(data, dataLabels, i, batch_size) # This returns a batch of dimension batch_size, in_chanels, height, width (30,1,25,8)
-
+            batch, batchLabels = getBatch(train, trainLabels, i, batch_size) # This returns a batch of dimension batch_size, in_chanels, height, width (30,1,25,8)
+            
             # Enable GPUs
             if cuda:
                 batch = batch.cuda()
                 batchLabels.cuda()
 
-
-            # Real/Fake GAN Loss (A)
             trainingClassifications = discriminator(batch, epoch)  # How well does the real A image fit the A domain?
-
             trainingLoss = get_dis_loss(trainingClassifications, batchLabels, dis_criterion, cuda)
 
             # UPDATE EDGES BASED ON LOSSES *****************************************************
@@ -138,54 +155,28 @@ def main():
             optim_dis.step()
 
             if iters % log_interval == 0:
-               
-                
-                
-                
-                # Test
-#                 testBatch, testBatchLabels = getBatch(test, testLabels, 0, 5999)  # always grab the same images
-                
-#                 print("sizes before anything:" + str(len(testBatch)) + " " + str(len(testBatchLabels)))
-                
-                
-#                 if cuda:
-#                     testBatch = batch.cuda()
-#                     testBatchLabels.cuda()
+              
                     
                 if cuda:
                     test = test.cuda()
                     testLabels = testLabels.cuda()
           
                 startIndex, stopIndex = getStartStop(testLabels)
-                
-#                print()
-#                print("startIndex: " + str(startIndex))
-#                print("stopIndex: " + str(stopIndex))
           
                 testingClassifications = discriminator(test[startIndex:stopIndex], 0)
-                
-#                 print()
-                
-#                 print("size of testingClassifications:" + str(len(testingClassifications)))
-#                 print("size of testBatchLabels:" + str(len(testBatchLabels)))
-#                 print("size of testBatch:" + str(len(testBatch)))
-                
-#                 print()
-                
-#                 print("size of test:" + str(len(test)))
-#                 print("size of testLabels:" + str(len(testLabels)))
-#                 print("i:" + str(i))
-#                 print("i % 5999:" + str(i % 5999))
-                
-                
+               
                 
   
   
                 testingLoss = get_dis_loss(testingClassifications, testLabels[startIndex:stopIndex], dis_criterion, cuda)
                 testingAccuracy = getAccuracy(testingClassifications, testLabels[startIndex:stopIndex])               
                 
+                modelNum = iters / model_save_interval
+        
                 print()
                 print("---------------------")
+                print("Model Number: " + str(modelNum))
+                modelNumList.append(modelNum)
                 print("Training Loss:", as_np(trainingLoss.mean()))
                 trainingLossList.append(as_np(trainingLoss.mean()))
                 print("Training Accuracy:", getAccuracy(trainingClassifications, batchLabels))
@@ -196,6 +187,7 @@ def main():
                 testingAccuracyList.append(testingAccuracy)
           
             # save models at the save interval
+            
             if iters % model_save_interval == 0:
               
 #                 if os.path.exists(model_subdir_path):
@@ -205,10 +197,12 @@ def main():
               
                 torch.save(discriminator.state_dict(),
                            os.path.join('transfer2_model_dis-' + str(iters / model_save_interval)))
+                
 
             iters += 1
     print("assigningDictionary")
     dictionary = {
+      
       "TrainingLoss":trainingLossList,
       "TrainingAccuracy":trainingAccuracyList,
       "TestingLoss":testingLossList,
